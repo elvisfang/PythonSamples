@@ -1,9 +1,11 @@
 # -*- coding:UTF-8 -*-
 from urllib import request
 from urllib import parse
+from urllib import error
 from bs4 import BeautifulSoup
 import re
 import csv
+import time
 import sys
 
 if __name__ == "__main__":
@@ -13,7 +15,7 @@ if __name__ == "__main__":
     Target_URL = 'http://house.ksou.cn/p.php'
     Query_String = {}
     Query_String['q'] = 'Toorak'
-    Query_String['p'] = '0'
+    Query_String['p'] = '2'
     Query_String['s'] = 1
     Query_String['st'] = ''
     Query_String['type'] = ''
@@ -36,7 +38,17 @@ if __name__ == "__main__":
     Head = {}
     Head['User-Agent'] = 'Mozilla/5.0 (Linux; Android 4.1.1; Nexus 7 Build/JRO03D) AppleWebKit/535.19 (KHTML, like Gecko) Chrome/18.0.1025.166  Safari/535.19'
     Target_Req = request.Request(url = Target_URL, headers = Head)
-    Target_Response = request.urlopen(Target_Req,SearchData)
+    try:
+        Target_Response = request.urlopen(Target_Req,SearchData)
+    except error.HTTPError as e:
+        ErrorLog = open('SpiderError.log', 'a', encoding='utf-8')
+        ErrorLog.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' HTTPError:' + e.code + ': ' + e.msg + 'When opening' + Target_Req.full_url)
+        ErrorLog.close()
+    except error.URLError as e:
+        ErrorLog = open('SpiderError.log', 'a', encoding='utf-8')
+        ErrorLog.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' URLError:' + e.code + ': ' + e.msg + 'When opening' + Target_Req.full_url)
+        ErrorLog.close()
+
     Target_Html = Target_Response.read().decode('utf-8','ignore')
     #new BeautifulSoup object
     soup = BeautifulSoup(Target_Html,'lxml')
@@ -47,7 +59,18 @@ if __name__ == "__main__":
         #Result['Addr'] = addr.string
         ADDR_URL = addr.a.get('href')[5:]
         Detail_Req = request.Request(url = Target_URL+ADDR_URL, headers = Head)
-        Detail_Response = request.urlopen(Detail_Req)
+
+        try:
+            Detail_Response = request.urlopen(Detail_Req)
+        except error.HTTPError as e:
+            ErrorLog = open('SpiderError.log', 'a', encoding='utf-8')
+            ErrorLog.write(time.strftime("%Y-%m-%d %H:%M:%S",time.localtime()) + ' HTTPError:' + e.code + ': ' + e.msg + 'When opening' + Detail_Req.full_url)
+            ErrorLog.close()
+        except error.URLError as e:
+            ErrorLog = open('SpiderError.log', 'a', encoding='utf-8')
+            ErrorLog.write(time.strftime("%Y-%m-%d %H:%M:%S",time.localtime()) + ' URLError:' + e.code + ': ' + e.msg + 'When opening' + Detail_Req.full_url)
+            ErrorLog.close()
+
         Detail_Html = Detail_Response.read().decode('utf-8','ignore')
         Detail_Soup = BeautifulSoup(Detail_Html,'lxml')
         addr_tag = Detail_Soup.find('span', class_='addr')
@@ -103,6 +126,8 @@ if __name__ == "__main__":
         #Get Land Size
         if detail_tag.find(text=re.compile('Land size:')):
             Result['LandSize'] = detail_tag.find(text=re.compile('Land size:')).parent.next_sibling
+            if Result['LandSize']  == ' \xa0':
+                Result['LandSize'] = 'null'
         else:
             Result['LandSize'] = 'null'
         #get Build Year
@@ -112,7 +137,11 @@ if __name__ == "__main__":
             Result['BuildYear'] = 'null'
         # Get Agent Name
         if detail_tag.find(text=re.compile('Agent')):
-            Result['Agent'] = detail_tag.find(text=re.compile('Agent')).parent.next_sibling
+            # <td><b>Agent:</b> <a href="http://www.ksouhouse.com/agent.php?id=21225&amp;name=Rodney+Morley+Pty+Ltd+-" title="View more about this realestate agent">Rodney Morley Pty Ltd -</a></td>
+            if detail_tag.find(text=re.compile('Agent')).parent.parent.find('a'):
+                Result['Agent'] = detail_tag.find(text=re.compile('Agent')).parent.parent.a.string
+            else:#<td><b>Agent:</b> hockingstuart  Armadale</td>
+                Result['Agent'] = detail_tag.find(text=re.compile('Agent')).parent.next_sibling
         else:
             Result['Agent'] = 'null'
         #get distance to cbd
