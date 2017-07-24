@@ -6,16 +6,18 @@ from bs4 import BeautifulSoup
 import re
 import csv
 import time
-import sys
 
 if __name__ == "__main__":
     #craete a CSV
     ResultFile = open('ksou.csv', 'w', encoding='utf-8')
+
+    ProxyEnabled = False
+
     #search ksou
     Target_URL = 'http://house.ksou.cn/p.php'
     Query_String = {}
     Query_String['q'] = 'Toorak'
-    Query_String['p'] = '2'
+    Query_String['p'] = '3'
     Query_String['s'] = 1
     Query_String['st'] = ''
     Query_String['type'] = ''
@@ -35,28 +37,36 @@ if __name__ == "__main__":
 
     SearchData = parse.urlencode(Query_String).encode('utf-8')
     #User-Agent
+    if ProxyEnabled:
+        proxy = {'http': '113.121.188.81:808'}
+        proxy_support = request.ProxyHandler(proxy)
+        opener = request.build_opener(proxy_support)
+        request.install_opener(opener)
+    #define Head
     Head = {}
     Head['User-Agent'] = 'Mozilla/5.0 (Linux; Android 4.1.1; Nexus 7 Build/JRO03D) AppleWebKit/535.19 (KHTML, like Gecko) Chrome/18.0.1025.166  Safari/535.19'
+
     Target_Req = request.Request(url = Target_URL, headers = Head)
     try:
         Target_Response = request.urlopen(Target_Req,SearchData)
     except error.HTTPError as e:
         ErrorLog = open('SpiderError.log', 'a', encoding='utf-8')
-        ErrorLog.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' HTTPError:' + e.code + ': ' + e.msg + 'When opening' + Target_Req.full_url)
+        ErrorLog.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' HTTPError:' + e.code  + ' When processing:' + Target_Req.full_url +'\n')
         ErrorLog.close()
     except error.URLError as e:
         ErrorLog = open('SpiderError.log', 'a', encoding='utf-8')
-        ErrorLog.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' URLError:' + e.code + ': ' + e.msg + 'When opening' + Target_Req.full_url)
+        ErrorLog.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' URLError:' + e.reason.strerror + ' When processing:' + Target_Req.full_url + '\n')
         ErrorLog.close()
-
+    #to do: hanle exception do not continue
     Target_Html = Target_Response.read().decode('utf-8','ignore')
+
     #new BeautifulSoup object
     soup = BeautifulSoup(Target_Html,'lxml')
-    #print(soup.find_all('span',class_='addr'))
+
     All_Result_List = []
     for addr in soup.find_all('span',class_='addr'):
         Result = {}
-        #Result['Addr'] = addr.string
+
         ADDR_URL = addr.a.get('href')[5:]
         Detail_Req = request.Request(url = Target_URL+ADDR_URL, headers = Head)
 
@@ -64,13 +74,13 @@ if __name__ == "__main__":
             Detail_Response = request.urlopen(Detail_Req)
         except error.HTTPError as e:
             ErrorLog = open('SpiderError.log', 'a', encoding='utf-8')
-            ErrorLog.write(time.strftime("%Y-%m-%d %H:%M:%S",time.localtime()) + ' HTTPError:' + e.code + ': ' + e.msg + 'When opening' + Detail_Req.full_url)
+            ErrorLog.write(time.strftime("%Y-%m-%d %H:%M:%S",time.localtime()) + ' HTTPError:' + e.code  + ' When processing:' + Detail_Req.full_url)
             ErrorLog.close()
         except error.URLError as e:
             ErrorLog = open('SpiderError.log', 'a', encoding='utf-8')
-            ErrorLog.write(time.strftime("%Y-%m-%d %H:%M:%S",time.localtime()) + ' URLError:' + e.code + ': ' + e.msg + 'When opening' + Detail_Req.full_url)
+            ErrorLog.write(time.strftime("%Y-%m-%d %H:%M:%S",time.localtime()) + ' URLError:'  + e.reason.strerror + ' When processing:' + Detail_Req.full_url)
             ErrorLog.close()
-
+        print('Processing: ' + Target_URL+ADDR_URL)
         Detail_Html = Detail_Response.read().decode('utf-8','ignore')
         Detail_Soup = BeautifulSoup(Detail_Html,'lxml')
         addr_tag = Detail_Soup.find('span', class_='addr')
