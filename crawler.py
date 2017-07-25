@@ -1,4 +1,16 @@
 # -*- coding:UTF-8 -*-
+"""
+-------------------------------------------------
+   File Name：     crawler.py
+   Description :  crawl http://house.ksou.cn/p.php for property price data
+   Author :       elvisfang
+   date：          2017/7/20
+-------------------------------------------------
+   Change Activity:
+                   2017/7/25:
+-------------------------------------------------
+"""
+__author__ = 'elvisfang'
 from urllib import request
 from urllib import parse
 from urllib import error
