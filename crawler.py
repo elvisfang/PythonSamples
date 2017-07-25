@@ -163,6 +163,8 @@ if __name__ == "__main__":
 
             #append dict to the dict list
             All_Result_List.append(Result)
+            #sleep 2 second
+            time.sleep(2)
         writer = csv.writer(ResultFile)
         ResultFile.write('Addr,SoldPrice,SoldDate,LastSold,RentPrice,Type,BedRoom,BathRoom,CarSpace,LandSize,BuildYear,Agent,Distance\n')
         for item in All_Result_List:
