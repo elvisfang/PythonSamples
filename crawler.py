@@ -15,6 +15,7 @@ from urllib import request
 from urllib import parse
 from urllib import error
 from bs4 import BeautifulSoup
+from pymongo import MongoClient
 import re
 import csv
 import time
@@ -75,6 +76,13 @@ if __name__ == "__main__":
         All_Result_List = []
         # craete a CSV
         ResultFile = open('ksou.csv', 'w', encoding='utf-8')
+
+        #connect to mongo
+        Mongo = MongoClient('127.0.0.1',27017)
+        DB = Mongo['KsouData']
+        PropertyCollection = DB['PropertyDetail']
+
+
         for addr in soup.find_all('span',class_='addr'):
             Result = {}
 
@@ -182,4 +190,19 @@ if __name__ == "__main__":
         for item in All_Result_List:
             #ResultFile.write(item['Addr'] +',' + item['SoldPrice']+',' + item['SoldDate']+',' +item['LastSold']+',' +item['RentPrice']+',' +item['Type']+',' +item['BedRoom']+',' +item['BathRoom']+',' +item['CarSpace']+',' +item['LandSize']+',' +item['BuildYear']+',' +item['Agent']+',' +item['Distance'] +'\n')
             writer.writerow([item['Addr'],item['SoldPrice'], item['SoldDate'],item['LastSold'],item['RentPrice'],item['Type'],item['BedRoom'],item['BathRoom'],item['CarSpace'],item['LandSize'],item['BuildYear'],item['Agent'],item['Distance']])
+            #insert to db
+            document = {
+                    'state': Query_String['sta'],
+                    'region': Query_String['region'],
+                    'address': item['Addr'],
+                    'SoldPrice': item['SoldPrice']
+                }
+            PropertyCollection.update({'address':item['Addr']},
+                                      {'$set':document},
+                                      upsert=True,
+                                       multi=True
+                                       )
         ResultFile.close()
+
+def SaveDataToMongo():
+    pass
