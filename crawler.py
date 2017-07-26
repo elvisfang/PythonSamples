@@ -16,6 +16,7 @@ from urllib import parse
 from urllib import error
 from bs4 import BeautifulSoup
 from pymongo import MongoClient
+from pymongo import errors
 import re
 import csv
 import time
@@ -197,11 +198,18 @@ if __name__ == "__main__":
                     'address': item['Addr'],
                     'SoldPrice': item['SoldPrice']
                 }
-            PropertyCollection.update({'address':item['Addr']},
-                                      {'$set':document},
-                                      upsert=True,
-                                       multi=True
-                                       )
+            try:
+                PropertyCollection.update({'address':item['Addr']},
+                                          {'$set':document},
+                                          upsert=True,
+                                           multi=True
+                                           )
+            except errors as e:
+                ErrorLog = open('SpiderError.log', 'a', encoding='utf-8')
+                ErrorLog.write(time.strftime("%Y-%m-%d %H:%M:%S",time.localtime()) + ' MongoDBError:' + e.reason.strerror)
+                ErrorLog.close()
+                continue
+
         ResultFile.close()
 
 def SaveDataToMongo():
